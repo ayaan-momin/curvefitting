@@ -45,7 +45,7 @@ population_size = 100
 mutation_rate = 0.1
 
 # Initialize population
-abc = (rand()*4-2, rand()*14-7, rand()*10)  # Random initial guess
+abc = (rand()*4-2, rand()*14-7, rand()*10) 
 population = mutate(abc, population_size)
 
 # Animation
