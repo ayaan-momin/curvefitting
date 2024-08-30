@@ -1,76 +1,84 @@
 using Plots
 
-y(x)=7x+5
+# Define the true function (quadratic in this case)
+y(x) = 9x^2 + x+ 5
 x = 0:0.1:5
 
-scatter_plot = scatter(x, y.(x), xlims = (-0.1, 5.5), ylims = (0, 50))
+# Create initial scatter plot
+scatter_plot = scatter(x, y.(x), xlims = (-0.1, 5.5), ylims = (0, 100), label="True function")
 
-m, c = (7,5)
-println("m = ", m)
-println("c = ", c)
+# Initial parameters (a, b, c for ax^2 + bx + c)
+a, b, c = (2, 7, 5)
+println("True parameters: a = $a, b = $b, c = $c")
 
 function mutate(value, mutations = 10)
-    return [value + rand() - 0.5 for index in 1:mutations]
+    return [value + (rand() - 0.5) * value * 0.1 for _ in 1:mutations]
 end
 
-function mutate(mc::Tuple, number_of_mutations = 10)
-    m, c = mc
-    ms = mutate(m, number_of_mutations)
+function mutate(abc::Tuple, number_of_mutations = 10)
+    a, b, c = abc
+    as = mutate(a, number_of_mutations)
+    bs = mutate(b, number_of_mutations)
     cs = mutate(c, number_of_mutations)
 
-    [(ms[index], cs[index]) for index in 1:number_of_mutations]
+    [(as[i], bs[i], cs[i]) for i in 1:number_of_mutations]
 end
 
-mutate(5)
-mutate((8,2))
+# Error function
+Δ(a, b, c, x, y) = (a * x^2 + b * x + c) - y
 
-∆(m, c, x, y) = (m * x + c) - y
-∆(5, 4, 10, y(10))
-
-function total_error(m, c, x, y)
-    ΣΔ = 0
-
-    for i in eachindex(x)
-        ΣΔ += abs(∆(m, c, x[i], y[i]))
-    end
-
-    ΣΔ
+function total_error(a, b, c, x, y)
+    sum(abs.(Δ.(a, b, c, x, y)))
 end
 
-function top_survivors(mcs, x_train, y_train, top_percent = 10)
-    errors_and_values = []
-
-    for mc in mcs
-        m, c = mc
-        error = total_error(m, c, x_train, y_train)
-        push!(errors_and_values, (error, mc))
-    end
-
-
+function top_survivors(abcs, x_train, y_train, top_percent = 10)
+    errors_and_values = [(total_error(abc..., x_train, y_train), abc) for abc in abcs]
     sorted_errors_and_values = sort(errors_and_values)
-    end_number = Int(length(mcs) * top_percent / 100)
+    end_number = max(1, Int(floor(length(abcs) * top_percent / 100)))
     sorted_errors_and_values[1:end_number]
 end
 
-x_train = [1, 2, 3, 4, 5]
+# Training data
+x_train = 0:0.5:5
 y_train = y.(x_train)
-mcs = mutate((0, 0))
 
-top_survivors(mcs, x_train, y_train)
+# Genetic algorithm parameters
+generations = 200
+population_size = 100
+mutation_rate = 0.1
 
+# Initialize population
+abc = (rand()*4-2, rand()*14-7, rand()*10)  # Random initial guess
+population = mutate(abc, population_size)
 
-generations = 40
-
-top_survivor = Nothing
-mc = (0, 0)
-
-@gif for i in 1:generations
-    mcs = mutate(mc)
-    top_survivor = top_survivors(mcs, x_train, y_train)[1]
-    _error, mc = top_survivor
-
-    hm, hc = mc
-    p = scatter(x_train, y_train)
-    h(x) = hm * x + hc
-    plot!(p, x, h.(x), ylims = (0, 50))
+# Animation
+@gif for gen in 1:generations
+    global population, abc
+    
+    # Evaluate fitness and select top survivors
+    survivors = top_survivors(population, x_train, y_train)
+    best_error, abc = survivors[1]
+    
+    # Create new population through mutation
+    population = vcat([mutate(s[2], Int(floor(population_size / length(survivors)))) for s in survivors]...)
+    
+    # Ensure population size remains constant
+    while length(population) < population_size
+        push!(population, mutate(abc, 1)[1])
+    end
+    
+    # Plot current best fit
+    a, b, c = abc
+    h(x) = a * x^2 + b * x + c
+    p = scatter(x_train, y_train, label="Training data", xlabel="x", ylabel="y", 
+                title="Quadratic Fit: Generation $gen\na=$(round(a,digits=3)), b=$(round(b,digits=3)), c=$(round(c,digits=3))")
+    plot!(p, x, h.(x), lw=2, label="Current fit")
+    plot!(p, x, y.(x), lw=2, ls=:dash, label="True function")
+    ylims!(0, 100)
+    
+    println("Generation $gen: a = $(round(a,digits=3)), b = $(round(b,digits=3)), c = $(round(c,digits=3)), error = $(round(best_error,digits=3))")
 end
+
+# Final parameters
+a, b, c = abc
+println("Final parameters: a = $(round(a,digits=3)), b = $(round(b,digits=3)), c = $(round(c,digits=3))")
