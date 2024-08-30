@@ -1,13 +1,10 @@
 using Plots
 
-# Define the true function (quadratic in this case)
 y(x) = 9x^2 + x+ 5
 x = 0:0.1:5
 
-# Create initial scatter plot
 scatter_plot = scatter(x, y.(x), xlims = (-0.1, 5.5), ylims = (0, 100), label="True function")
 
-# Initial parameters (a, b, c for ax^2 + bx + c)
 a, b, c = (2, 7, 5)
 println("True parameters: a = $a, b = $b, c = $c")
 
@@ -55,19 +52,15 @@ population = mutate(abc, population_size)
 @gif for gen in 1:generations
     global population, abc
     
-    # Evaluate fitness and select top survivors
     survivors = top_survivors(population, x_train, y_train)
     best_error, abc = survivors[1]
     
-    # Create new population through mutation
     population = vcat([mutate(s[2], Int(floor(population_size / length(survivors)))) for s in survivors]...)
     
-    # Ensure population size remains constant
     while length(population) < population_size
         push!(population, mutate(abc, 1)[1])
     end
     
-    # Plot current best fit
     a, b, c = abc
     h(x) = a * x^2 + b * x + c
     p = scatter(x_train, y_train, label="Training data", xlabel="x", ylabel="y", 
